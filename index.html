@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Urban WasteSmart - Making Cities Cleaner!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <!-- Leaflet.js for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    body {
+      margin: 0; font-family: 'Roboto', sans-serif; background: linear-gradient(135deg, #e0f7fa, #fffde4 70%);
+      min-height: 100vh; color: #333;
+      transition: background 0.4s, color 0.4s;
+    }
+    body.night {
+      background: linear-gradient(135deg, #1a237e 60%, #424242 100%);
+      color: #fafafa;
+    }
+    body.highcontrast {
+      background: #000 !important; color: #ffd600 !important;
+    }
+    .highcontrast header, .highcontrast nav, .highcontrast .cta-btn, .highcontrast .login-form, .highcontrast .admin-form, .highcontrast .pickup-form,
+    .highcontrast .about-card, .highcontrast .contact-card, .highcontrast .bin-card, .highcontrast .leaderboard-table, .highcontrast #quizBox {
+      background: #000 !important; color: #ffd600 !important; border-color: #ffd600 !important;
+      box-shadow: none !important;
+    }
+    .highcontrast nav a { color: #ffd600 !important; }
+    .highcontrast nav a.active, .highcontrast nav a:hover { background: #ffd600 !important; color: #000 !important;}
+    .highcontrast .cta-btn { background: #ffd600 !important; color: #000 !important;}
+    header {
+      background: linear-gradient(90deg, #00bfae 70%, #ffd600 100%);
+      color: #fff;
+      padding: 1.5rem 2rem 1rem 2rem;
+      text-align: center;
+      box-shadow: 0 2px 14px #00bfae44;
+      position: relative;
+    }
+    .logo-svg {
+      display: inline-block; vertical-align: middle;
+      width: 56px; height: 56px; margin-right: 0.8rem;
+      border-radius: 50%; background: #fff;
+      box-shadow: 0 2px 14px #00bfae22; padding: 5px;
+    }
+    header .brand {
+      font-size: 2.5rem; font-weight: bold; letter-spacing: 1px;
+      display: inline-block; vertical-align: middle;
+    }
+    header .motto { font-size: 1.1rem; margin-top: .3rem; letter-spacing: 1px;}
+    .night header { background: linear-gradient(90deg, #0e4144 70%, #ffd600 100%);}
+    nav {
+      display: flex; justify-content: center; gap: 1.5rem; margin: 1.5rem 0; flex-wrap: wrap;
+    }
+    nav a {
+      text-decoration: none; color: #00bfae; font-weight: 500; font-size: 1.1rem;
+      transition: color 0.2s; padding: 0.5rem 1rem; border-radius: 8px;
+    }
+    nav a.active, nav a:hover { background: #00bfae; color: #fff;}
+    .night nav a { color: #ffd600; }
+    .night nav a.active, .night nav a:hover { background: #ffd600; color: #222;}
+    .container { max-width: 1150px; margin: 0 auto; padding: 1.5rem;}
+    .section { display: none; animation: fadeIn 0.4s;}
+    .section.active { display: block; }
+    @keyframes fadeIn { from {opacity:0;transform:translateY(40px);} to {opacity:1;transform:translateY(0);} }
+    .cta-btn {
+      background: linear-gradient(90deg,#00bfae,#ffd600); color: #fff;
+      border: none; border-radius: 20px; padding: 0.7rem 1.5rem;
+      font-size: 1.1rem; font-weight: bold; margin-top: 1rem; cursor: pointer;
+      box-shadow: 0 2px 8px #00bfae44;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .cta-btn:hover { background: linear-gradient(90deg,#ffd600,#00bfae);}
+    .night .cta-btn { background: linear-gradient(90deg,#ffd600,#00bfae); color: #0e4144;}
+    /* Map & bins */
+    #binMap { height: 320px; width: 100%; border-radius: 20px; box-shadow: 0 0 10px #00bfae22; margin-top: 1rem;}
+    .bins-list { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: 1.3rem;}
+    .bin-card {
+      background: #fff; border-radius: 16px; padding: 1.1rem 1.2rem;
+      box-shadow: 0 2px 12px #00bfae22; flex: 1 1 230px;
+      display: flex; flex-direction: column; align-items: flex-start; position:relative;
+    }
+    .bin-status { font-weight: 700;}
+    .bin-status.full { color: #e53935;}
+    .bin-status.available { color: #43a047;}
+    .night .bin-card { background: #263238; color: #fafafa;}
+    .bin-qr { margin: 0.7rem 0; }
+    .bin-urgent { position:absolute; right:1.2rem; top:1.2rem;}
+    /* Login forms */
+    .login-form, .admin-form {
+      background: #fff; border-radius: 18px; padding: 1.5rem 2rem;
+      box-shadow: 0 2px 10px #00bfae22; max-width: 400px; margin: 2rem auto;
+    }
+    .night .login-form, .night .admin-form { background: #263238; color: #fafafa;}
+    .login-form input, .admin-form input, .pickup-form input, .pickup-form select {
+      width: 100%; padding: .7rem; margin: .5rem 0; border-radius: 8px;
+      border: 1.5px solid #00bfae55; font-size: 1rem;
+    }
+    .pickup-form { max-width: 420px; margin: 2rem auto; background: #fff;
+      border-radius: 18px; box-shadow: 0 2px 10px #00bfae22; padding: 1.5rem 2rem;}
+    .night .pickup-form { background: #263238; color: #fafafa;}
+    .pickup-form .row { display: flex; gap: 1rem;}
+    .notif { background: #fff9c4; color: #333; border-radius: 12px; padding: 1rem; margin: 1rem 0;}
+    .night .notif { background: #ffd60022; color: #ffd600;}
+    .about-card, .contact-card {
+      background: #fff; border-radius: 16px; padding: 1.5rem 2rem;
+      box-shadow: 0 2px 12px #00bfae22; margin: 2rem auto; max-width: 600px;
+    }
+    .night .about-card, .night .contact-card { background: #263238; color: #fafafa;}
+    /* Leaderboard */
+    .leaderboard-table {
+      width:100%; border-collapse:collapse; background:#fff; border-radius:14px; overflow:hidden; margin:1.5rem 0;
+      box-shadow: 0 2px 12px #00bfae22;
+    }
+    .leaderboard-table th, .leaderboard-table td { padding:0.8rem; text-align:left;}
+    .leaderboard-table th { background:#00bfae; color:#fff;}
+    .leaderboard-table tr:nth-child(even){background:#f7f7f7;}
+    .night .leaderboard-table { background: #263238;}
+    .night .leaderboard-table th { background: #ffd600; color: #263238;}
+    .night .leaderboard-table tr:nth-child(even){background:#34495e;}
+    /* Additional buttons */
+    .topbar-buttons {
+      position: absolute; right: 2rem; top: 2rem; display: flex; gap: 1rem;
+    }
+    .toggle-btn {
+      border:none; background:#fff; color:#00bfae; padding:0.4rem 0.8rem; border-radius: 12px;
+      font-size: 1.1rem; cursor: pointer; font-weight: bold;
+      box-shadow: 0 2px 8px #00bfae22; margin-left:6px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .toggle-btn.active, .toggle-btn:hover {
+      background: #00bfae; color:#fff;
+    }
+    .night .toggle-btn { background: #ffd600; color: #1a237e;}
+    .night .toggle-btn.active, .night .toggle-btn:hover {
+      background: #263238; color:#ffd600;
+    }
+    /* Team mode */
+    .team-card {background:#fffbe8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 8px #ffd60044; margin-bottom:1rem;}
+    .team-leaderboard th{background:#ffd600;color:#222;}
+    .team-leaderboard td{font-weight:600;}
+    /* News Feed */
+    .news-feed {background:#e0f7fa;border-radius:14px;padding:1.2rem;margin:1.2rem 0;}
+    /* Voice Modal */
+    #voiceModal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:999; background:rgba(0,0,0,0.5);}
+    #voiceModal .inner {background:#fff; padding:2rem; border-radius:20px; max-width:350px; margin:8vh auto; text-align:center;}
+    #voiceModal input {width:90%;font-size:1.2rem;padding:0.7rem;margin:1rem 0;}
+    /* TTS Button */
+    .tts-btn {margin-left:0.5rem; font-size:1rem; border:none; background:#00bfae; color:#fff; border-radius:8px; padding:0.2rem 0.7rem;}
+    .tts-btn:hover {background:#43a047;}
+    /* Offline Sync */
+    #offlineNotif {background:#ffecb3;color:#222;}
+    /* Responsive */
+    @media (max-width: 720px) {
+      .container {padding: 0.6rem;}
+      header .brand { font-size: 1.5rem;}
+      nav { flex-wrap: wrap; gap: 0.7rem;}
+      .bins-list { flex-direction: column; }
+      .topbar-buttons { position: static; margin:0.8rem 0 0 0; justify-content:center;}
+      .logo-svg { width:38px;height:38px;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo-svg" title="Urban WasteSmart Logo">
+      <!-- SVG LOGO: recycle leaf + city -->
+      <svg viewBox="0 0 60 60" width="100%" height="100%">
+        <circle cx="30" cy="30" r="29" fill="#e0f7fa" stroke="#00bfae" stroke-width="2"/>
+        <g>
+          <path d="M17 36 Q21 24 30 24 T43 36" fill="#00bfae" opacity="0.35"/>
+          <rect x="25" y="29" width="4" height="13" rx="2" fill="#00bfae"/>
+          <rect x="33" y="32" width="4" height="10" rx="2" fill="#00bfae"/>
+          <rect x="38" y="35" width="2.5" height="7" rx="1" fill="#00bfae"/>
+        </g>
+        <path d="M14 38 Q30 53 46 38" stroke="#00bfae" stroke-width="2" fill="none"/>
+        <path d="M16 38 Q30 48 44 38" stroke="#43a047" stroke-width="1.5" fill="none"/>
+        <path d="M29 18 Q28 13 35 11 Q38 10 39 16 Q40 23 35 22 Q31 21 29 18Z"
+          fill="#43a047" stroke="#00bfae" stroke-width="1"/>
+        <circle cx="30" cy="30" r="29" fill="none" stroke="#ffd600" stroke-width="2" opacity="0.6"/>
+      </svg>
+    </span>
+    <span class="brand"><i class="fa-solid fa-recycle"></i> Urban WasteSmart</span>
+    <div class="topbar-buttons">
+      <button class="toggle-btn" id="nightBtn" title="Toggle Night Mode"><i class="fa-solid fa-moon"></i></button>
+      <button class="toggle-btn" id="a11yBtn" title="Toggle Large Text"><i class="fa-solid fa-universal-access"></i></button>
+      <button class="toggle-btn" id="contrastBtn" title="High Contrast Mode"><i class="fa-solid fa-low-vision"></i></button>
+      <button class="toggle-btn" id="voiceBtn" title="Voice Assistant"><i class="fa-solid fa-microphone"></i></button>
+    </div>
+    <div class="motto">Cleaner Cities, Healthier Lives! 🌱</div>
+  </header>
+  <nav>
+    <a href="#" class="active" data-section="home"><i class="fa-solid fa-house"></i> Home</a>
+    <a href="#" data-section="bins"><i class="fa-solid fa-trash"></i> Bins</a>
+    <a href="#" data-section="pickup"><i class="fa-solid fa-truck"></i> Book Pickup</a>
+    <a href="#" data-section="pickup-earn"><i class="fa-solid fa-hand-holding-dollar"></i> Pickup & Earn</a>
+    <a href="#" data-section="leaderboard"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
+    <a href="#" data-section="dashboard"><i class="fa-solid fa-chart-line"></i> Impact</a>
+    <a href="#" data-section="events"><i class="fa-solid fa-people-group"></i> Clean-up Events</a>
+    <a href="#" data-section="quiz"><i class="fa-solid fa-question"></i> Quiz</a>
+    <a href="#" data-section="profile"><i class="fa-solid fa-id-badge"></i> Profile</a>
+    <a href="#" data-section="challenges"><i class="fa-solid fa-people-arrows"></i> Team Challenge</a>
+    <a href="#" data-section="news"><i class="fa-solid fa-newspaper"></i> Eco News</a>
+    <a href="#" data-section="ai-classifier"><i class="fa-solid fa-robot"></i> AI Classifier</a>
+    <a href="#" data-section="offline"><i class="fa-solid fa-cloud-slash"></i> Offline Log</a>
+    <a href="#" data-section="login" id="loginBtn"><i class="fa-solid fa-user"></i> Login</a>
+    <a href="#" data-section="admin" id="adminBtn"><i class="fa-solid fa-user-gear"></i> Admin</a>
+    <a href="#" data-section="about"><i class="fa-solid fa-circle-info"></i> About Us</a>
+    <a href="#" data-section="contact"><i class="fa-solid fa-envelope"></i> Contact</a>
+  </nav>
+  <div class="container">
+    <!-- Home -->
+    <section class="section active" id="home">
+      <h2>Welcome to Urban WasteSmart!</h2>
+      <p>
+        Overflowing garbage, poor segregation, and inefficient collection cause hygiene issues and health hazards.
+        <br><b>We solve this with smart bins, efficient pickups, real-time updates, and community rewards!</b>
+      </p>
+      <div id="tipBox" class="notif" style="font-size:1.1rem;background:#e0f7fa; color:#00bfae; margin:0.7rem 0 1.2rem 0;">
+        <i class="fa-solid fa-leaf"></i> <span id="tipText"></span>
+      </div>
+      <div id="newsFeedHome" class="news-feed"></div>
+      <img src="https://cdn.pixabay.com/photo/2017/08/30/07/52/recycling-2692358_960_720.jpg" alt="Waste Management" style="width:100%;max-width:340px;border-radius:18px;box-shadow:0 2px 10px #00bfae55;margin:1.5rem 0;">
+      <ul>
+        <li><i class="fa-solid fa-map-location-dot"></i> <b>Find nearest smart bins</b> & get notified when you’re nearby!</li>
+        <li><i class="fa-solid fa-bell"></i> <b>Book doorstep pickups</b> & get notified if pickups are in your area</li>
+        <li><i class="fa-solid fa-hand-holding-dollar"></i> <b>Earn by picking up waste</b> from public spaces and using our bins</li>
+      </ul>
+      <button class="cta-btn" onclick="switchSection('pickup')">Book a Pickup</button>
+      <button class="cta-btn" onclick="switchSection('bins')">Find a Bin Near Me</button>
+    </section>
+    <!-- Bins -->
+    <section class="section" id="bins">
+      <h2><i class="fa-solid fa-trash"></i> Smart Bin Locations</h2>
+      <p>Find the nearest waste bins. Get notified if you enter a bin zone!</p>
+      <div id="binMap"></div>
+      <div class="bins-list" id="binsList"></div>
+      <div id="geoNotif" class="notif" style="display:none;"></div>
+      <div style="margin-top:1.2rem;">
+        <label><input type="checkbox" id="binAlertSub" style="vertical-align:middle;"> Notify me when a bin gets full in my area!</label>
+      </div>
+    </section>
+    <!-- Pickup Booking -->
+    <section class="section" id="pickup">
+      <h2><i class="fa-solid fa-truck"></i> Book Door-to-Door Pickup</h2>
+      <form class="pickup-form" id="pickupForm">
+        <label for="pickupLoc">Your Location</label>
+        <input type="text" id="pickupLoc" placeholder="e.g. 5th Avenue, Block C" required>
+        <label for="pickupAmt">Amount of Waste (kg)</label>
+        <input type="number" id="pickupAmt" min="1" required>
+        <label for="pickupSlot">Pick-up Slot</label>
+        <select id="pickupSlot">
+          <option>8-10 AM</option>
+          <option>10-12 AM</option>
+          <option>2-4 PM</option>
+          <option>4-6 PM</option>
+        </select>
+        <button class="cta-btn" type="submit">Book Now</button>
+      </form>
+      <div id="pickupNotif" class="notif" style="display:none;"></div>
+    </section>
+    <!-- Pickup & Earn -->
+    <section class="section" id="pickup-earn">
+      <h2><i class="fa-solid fa-hand-holding-dollar"></i> Pickup & Earn!</h2>
+      <p>Pick up waste from parks, roads, public places. Dispose in our smart bins and earn instant rewards!</p>
+      <ul>
+        <li>Scan bin QR or enter code at bin</li>
+        <li>Get paid instantly for every kg disposed! <span style="color:#43a047;font-weight:700;">(₹10/kg)</span></li>
+      </ul>
+      <form class="pickup-form" id="earnForm">
+        <label for="earnBin">Bin Code (see on bin)</label>
+        <input type="text" id="earnBin" required>
+        <label for="earnKg">Waste Amount (kg)</label>
+        <input type="number" id="earnKg" min="1" required>
+        <button class="cta-btn" type="submit">Submit & Earn</button>
+      </form>
+      <div id="earnNotif" class="notif" style="display:none;"></div>
+    </section>
+    <!-- Leaderboard -->
+    <section class="section" id="leaderboard">
+      <h2><i class="fa-solid fa-trophy"></i> Pickup & Earn Champions</h2>
+      <p>See who’s making the biggest difference in our city this week!</p>
+      <table class="leaderboard-table" id="leaderboardTable">
+        <thead>
+          <tr><th>Rank</th><th>User</th><th>KG Collected</th><th>Earnings (₹)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <!-- Impact Dashboard Section -->
+    <section class="section" id="dashboard">
+      <h2><i class="fa-solid fa-chart-line"></i> Our Impact</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:2rem;justify-content:center;">
+        <div style="background:#00bfae22;border-radius:12px;padding:1.3rem;min-width:160px;text-align:center;">
+          <div style="font-size:2.2rem;color:#00bfae;font-weight:bold;" id="wasteCounter">0</div>
+          <div style="font-weight:700;">KG Waste Collected</div>
+        </div>
+        <div style="background:#ffd60022;border-radius:12px;padding:1.3rem;min-width:160px;text-align:center;">
+          <div style="font-size:2.2rem;color:#ffd600;font-weight:bold;" id="binCounter">0</div>
+          <div style="font-weight:700;">Bins Emptied</div>
+        </div>
+        <div style="background:#43a04722;border-radius:12px;padding:1.3rem;min-width:160px;text-align:center;">
+          <div style="font-size:2.2rem;color:#43a047;font-weight:bold;" id="userCounter">0</div>
+          <div style="font-weight:700;">Active Users</div>
+        </div>
+        <div style="background:#1a237e22;border-radius:12px;padding:1.3rem;min-width:160px;text-align:center;">
+          <div style="font-size:2.2rem;color:#1a237e;font-weight:bold;" id="eventCounter">0</div>
+          <div style="font-weight:700;">Events Hosted</div>
+        </div>
+      </div>
+    </section>
+    <!-- Clean-up Events Section -->
+    <section class="section" id="events">
+      <h2><i class="fa-solid fa-people-group"></i> Community Clean-up Events</h2>
+      <div style="margin:1.3rem 0;">
+        <b>Upcoming:</b>
+        <ul id="eventList"></ul>
+      </div>
+      <div id="joinEventNotif" class="notif" style="display:none;"></div>
+    </section>
+    <!-- Waste Segregation Quiz Section -->
+    <section class="section" id="quiz">
+      <h2><i class="fa-solid fa-question"></i> Waste Segregation Quiz
+        <button class="tts-btn" onclick="ttsQuizQ()" title="Read Aloud"><i class="fa-solid fa-volume-high"></i></button>
+      </h2>
+      <div id="quizBox" style="background:#fff;border-radius:16px;box-shadow:0 2px 10px #00bfae22;padding:2rem;max-width:420px;margin:auto;text-align:center;">
+        <div id="quizQ" style="font-size:1.2rem;"></div>
+        <div id="quizBtns" style="margin-top:1.2rem;">
+          <button class="cta-btn" onclick="submitQuiz('Wet')">Wet</button>
+          <button class="cta-btn" onclick="submitQuiz('Dry')">Dry</button>
+          <button class="cta-btn" onclick="submitQuiz('Recyclable')">Recyclable</button>
+        </div>
+        <div id="quizA" style="margin-top:1rem;font-weight:bold;"></div>
+        <div id="quizScore" style="margin-top:0.8rem;"></div>
+      </div>
+    </section>
+    <!-- User Profile & Badges Section -->
+    <section class="section" id="profile">
+      <h2><i class="fa-solid fa-id-badge"></i> My Profile</h2>
+      <div style="background:#e0f7fa;border-radius:16px;box-shadow:0 2px 10px #00bfae22;padding:2rem;max-width:420px;margin:auto;">
+        <div><b>User:</b> <span id="profileUser"></span></div>
+        <div><b>Total Waste Collected:</b> <span id="profileWaste"></span> kg</div>
+        <div><b>Pickups Booked:</b> <span id="profilePickups"></span></div>
+        <div><b>Events Joined:</b> <span id="profileEvents"></span></div>
+        <div style="margin-top:1rem;"><b>Badges:</b>
+          <span id="profileBadges"></span>
+        </div>
+      </div>
+    </section>
+    <!-- Team Challenge Section -->
+    <section class="section" id="challenges">
+      <h2><i class="fa-solid fa-people-arrows"></i> Neighborhood Challenge Mode</h2>
+      <div class="team-card">
+        <label for="myTeam"><b>Choose your team (area): </b></label>
+        <select id="myTeam">
+          <option>Connaught Place</option>
+          <option>Sector 18 Noida</option>
+          <option>Karol Bagh</option>
+          <option>DLF Cyber City</option>
+          <option>Faridabad Center</option>
+        </select>
+        <button class="cta-btn" onclick="setTeam()">Join Team</button>
+        <span id="myTeamSet" style="margin-left:1rem;color:#43a047;font-weight:bold;"></span>
+      </div>
+      <h3>Team Leaderboard</h3>
+      <table class="leaderboard-table team-leaderboard" id="teamLeaderboard">
+        <thead>
+          <tr><th>Rank</th><th>Team</th><th>KG Collected</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <!-- Eco News Feed -->
+    <section class="section" id="news">
+      <h2><i class="fa-solid fa-newspaper"></i> Eco News & Tips</h2>
+      <div id="newsFeed" class="news-feed"></div>
+    </section>
+    <!-- AI Waste Type Classifier -->
+    <section class="section" id="ai-classifier">
+      <h2><i class="fa-solid fa-robot"></i> AI Waste Type Classifier</h2>
+      <div style="background:#e0f7fa;padding:1.5rem 2rem;border-radius:18px;max-width:420px;margin:2rem auto;text-align:center;">
+        <form id="aiForm">
+          <input type="file" accept="image/*" id="aiFile"><br>
+          <button class="cta-btn" type="submit">Classify Waste</button>
+        </form>
+        <div id="aiPreview" style="margin:1.2rem 0;"></div>
+        <div id="aiResult" class="notif" style="display:none;"></div>
+      </div>
+      <p style="font-size:0.95em;color:#888;">(Demo: Simulates AI classification. In a real app, this would use a cloud AI model.)</p>
+    </section>
+    <!-- Offline Log Section -->
+    <section class="section" id="offline">
+      <h2><i class="fa-solid fa-cloud-slash"></i> Offline Pickup Log</h2>
+      <div id="offlineNotif" class="notif">You can log pickups even when offline. When online, click Sync to update!</div>
+      <form class="pickup-form" id="offlineForm">
+        <label for="offlineLoc">Location</label>
+        <input type="text" id="offlineLoc" required>
+        <label for="offlineKg">Waste (kg)</label>
+        <input type="number" id="offlineKg" min="1" required>
+        <button class="cta-btn" type="submit">Log Pickup</button>
+      </form>
+      <button class="cta-btn" onclick="syncOffline()">Sync Now</button>
+      <div id="offlineLogList" style="margin:1rem 0;"></div>
+    </section>
+    <!-- Login -->
+    <section class="section" id="login">
+      <form class="login-form" id="loginForm">
+        <h2><i class="fa-solid fa-user"></i> User Login</h2>
+        <input type="text" id="username" placeholder="Enter username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button class="cta-btn" type="submit">Login</button>
+      </form>
+      <div id="loginNotif" class="notif" style="display:none;"></div>
+    </section>
+    <!-- Admin -->
+    <section class="section" id="admin">
+      <form class="admin-form" id="adminForm">
+        <h2><i class="fa-solid fa-user-gear"></i> Admin Panel</h2>
+        <input type="text" id="adminUser" placeholder="Admin username" required>
+        <input type="password" id="adminPass" placeholder="Admin password" required>
+        <button class="cta-btn" type="submit">Login</button>
+      </form>
+      <div id="adminNotif" class="notif" style="display:none;"></div>
+      <div id="adminPanel" style="display:none; margin-top:2rem;">
+        <h3>Manage Pickups</h3>
+        <ul id="adminPickups"></ul>
+        <h3>Bin Status</h3>
+        <ul id="adminBins"></ul>
+        <h3>Bin Alert Subscribers</h3>
+        <ul id="binAlertList"></ul>
+      </div>
+    </section>
+    <!-- About -->
+    <section class="section" id="about">
+      <div class="about-card">
+        <h2>About Urban WasteSmart</h2>
+        <p>We're a student-led initiative to tackle urban waste with technology and community rewards!</p>
+        <ul>
+          <li><b>Smart Bins:</b> Real-time locations, level updates, and geofencing.</li>
+          <li><b>Efficient Pickups:</b> Book slots, get notified, and reduce missed collections.</li>
+          <li><b>Incentives:</b> Pick up waste in public spaces and earn money instantly!</li>
+          <li><b>Admin Panel:</b> For streamlined operations and bin monitoring.</li>
+        </ul>
+        <p>
+          <b>Hackathon Team:</b> <i>Urban Innovators</i>
+        </p>
+      </div>
+    </section>
+    <!-- Contact -->
+    <section class="section" id="contact">
+      <div class="contact-card">
+        <h2>Contact Us</h2>
+        <p>
+          <i class="fa-solid fa-envelope"></i> <a href="mailto:urbansmartwaste@email.com">urbansmartwaste@email.com</a><br>
+          <i class="fa-solid fa-location-dot"></i> Urban WasteSmart HQ, City Center
+        </p>
+        <p>
+          <b>Follow us:</b>
+          <a href="#"><i class="fa-brands fa-x-twitter"></i></a>
+          <a href="#"><i class="fa-brands fa-facebook"></i></a>
+          <a href="#"><i class="fa-brands fa-instagram"></i></a>
+        </p>
+      </div>
+    </section>
+    <!-- VOICE MODAL -->
+    <div id="voiceModal">
+      <div class="inner">
+        <h3><i class="fa-solid fa-microphone"></i> Voice Assistant</h3>
+        <input type="text" id="voiceInput" placeholder="Say something...">
+        <button class="cta-btn" onclick="runVoice()">Send</button>
+        <div id="voiceResult" style="margin-top:1rem;"></div>
+        <button class="cta-btn" onclick="closeVoiceModal()">Close</button>
+      </div>
+    </div>
+  </div>
+  <!-- Leaflet JS and QR Code lib -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+  <script>
+    // Navigation
+    function switchSection(section) {
+      document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+      document.querySelector('nav a[data-section="'+section+'"]').classList.add('active');
+      document.getElementById(section).classList.add('active');
+      if(section==='leaderboard') renderLeaderboard();
+      if(section==='dashboard') renderDashboard();
+      if(section==='events') renderEvents();
+      if(section==='quiz') { quizIdx=0; quizScore=0; nextQuizQ(); }
+      if(section==='profile') renderProfile();
+      if(section==='challenges') { renderTeam(); renderTeamLeaderboard();}
+      if(section==='news') renderNews();
+      if(section==='offline') renderOfflineLog();
+      if(section==='home') renderNewsHome();
+    }
+    document.querySelectorAll('nav a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchSection(link.dataset.section);
+      });
+    });
+
+    // Cleanliness tips
+    const tips = [
+      "Segregate dry and wet waste before disposal.",
+      "Compost kitchen waste to reduce landfill load.",
+      "Avoid single-use plastics whenever possible.",
+      "Always close bin lids to prevent pests and odors.",
+      "Report overflowing bins using our platform!",
+      "Don’t litter: use public bins while on the go.",
+      "Rinse recyclables before throwing them away.",
+      "Share unused food with those in need.",
+      "Use cloth bags for shopping instead of plastic.",
+      "Encourage your community to recycle together!",
+      "Store e-waste separately for safe disposal."
+    ];
+    let tipIdx = 0;
+    function rotateTips() {
+      document.getElementById('tipText').innerText = tips[tipIdx];
+      tipIdx = (tipIdx+1)%tips.length;
+      setTimeout(rotateTips, 6500);
+    }
+    rotateTips();
+
+    // News feed
+    const newsItems = [
+      {title:"Delhi launches new e-waste collection drive", body:"The government has started a new e-waste collection initiative in the city. Citizens can now dispose electronic waste at designated spots."},
+      {title:"5 Ways to Reduce Food Waste at Home", body:"Plan your meals, store food properly, and compost leftovers to minimize food waste!"},
+      {title:"Plastic Ban in Markets", body:"Use cloth bags and avoid plastic packaging to support the city’s new plastic ban."},
+      {title:"Community Clean-up on 25th August", body:"Join our next clean-up drive at Central Market. Free T-shirts for all participants!"},
+      {title:"Recycling: Did you know?", body:"Recycling one aluminum can saves enough energy to run a TV for 3 hours!"}
+    ];
+    function renderNews() {
+      let div = document.getElementById('newsFeed');
+      div.innerHTML = "";
+      newsItems.forEach(n=>{
+        div.innerHTML += `<div style="margin-bottom:1.1rem;"><b>${n.title}</b><br>${n.body}</div>`;
+      });
+    }
+    function renderNewsHome() {
+      let div = document.getElementById('newsFeedHome');
+      div.innerHTML = `<b>Latest:</b> ${newsItems[0].title} — <span style="color:#666;">${newsItems[0].body}</span>`;
+    }
+    renderNewsHome();
+
+    // Dummy bin data
+    const bins = [
+      { id: "BIN1001", lat: 28.6139, lng: 77.2090, addr: "Connaught Place", status: "Available", level: 35 },
+      { id: "BIN1002", lat: 28.5355, lng: 77.3910, addr: "Sector 18 Noida", status: "Full", level: 98 },
+      { id: "BIN1003", lat: 28.7041, lng: 77.1025, addr: "Karol Bagh", status: "Available", level: 21 },
+      { id: "BIN1004", lat: 28.4595, lng: 77.0266, addr: "DLF Cyber City", status: "Available", level: 48 },
+      { id: "BIN1005", lat: 28.4089, lng: 77.3178, addr: "Faridabad Center", status: "Full", level: 99 }
+    ];
+    // Map render
+    let binMap = null;
+    function renderBins() {
+      // List
+      const binsList = document.getElementById('binsList');
+      binsList.innerHTML = "";
+      bins.forEach((b, i) => {
+        let statusClass = b.status === "Full" ? "full" : "available";
+        binsList.innerHTML += `
+          <div class="bin-card">
+            <div><b><i class="fa-solid fa-trash"></i> ${b.addr}</b></div>
+            <div>ID: <b>${b.id}</b></div>
+            <div>Level: <span class="bin-status ${statusClass}">${b.level}%</span></div>
+            <div>Status: <span class="bin-status ${statusClass}">${b.status}</span></div>
+            <canvas class="bin-qr" id="qr${i}" width="80" height="80" style="background:#fff;display:block;"></canvas>
+            <button class="cta-btn bin-urgent" style="font-size:0.88em;padding:0.2em 1em;" onclick="requestUrgent('${b.id}','${b.addr}')"><i class="fa-solid fa-bolt"></i> Urgent Pickup</button>
+          </div>`;
+      });
+      // QR Generation
+      bins.forEach((b, i)=>{
+        let qr = new QRious({element:document.getElementById(`qr${i}`), value: b.id, size: 80});
+      });
+      // Map
+      if (!binMap) {
+        binMap = L.map('binMap').setView([28.6139, 77.2090], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(binMap);
+        bins.forEach((b,i) => {
+          let icon = L.icon({
+            iconUrl: b.status === "Full"
+              ? "https://cdn-icons-png.flaticon.com/512/3097/3097073.png"
+              : "https://cdn-icons-png.flaticon.com/512/3097/3097006.png",
+            iconSize: [32, 32]
+          });
+          let popupHtml = `<b>${b.addr}</b><br>ID: ${b.id}<br>Status: <b>${b.status}</b><br>
+          <img src="${document.getElementById('qr'+i).toDataURL()}" width="70" height="70"><br>
+          <button onclick="requestUrgent('${b.id}','${b.addr}')" style='background:#ffd600;border:none;color:#000;border-radius:8px;padding:3px 10px;margin:5px 0;'>Urgent Pickup</button>
+          `;
+          L.marker([b.lat, b.lng], {icon}).addTo(binMap)
+            .bindPopup(popupHtml);
+        });
+      }
+    }
+    // Geofencing (simulate)
+    function checkGeoFencing() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        let found = false;
+        bins.forEach(b => {
+          let d = Math.sqrt(Math.pow(pos.coords.latitude - b.lat, 2) + Math.pow(pos.coords.longitude - b.lng, 2));
+          if (d < 0.03) { // ~3km
+            found = true;
+            document.getElementById('geoNotif').style.display = '';
+            document.getElementById('geoNotif').innerHTML = `<b>You're near <span style="color:#00bfae">${b.addr}</span>! <i class="fa-solid fa-trash"></i> Dispose your waste here and earn!`;
+          }
+        });
+        if (!found) document.getElementById('geoNotif').style.display = 'none';
+      });
+    }
+    // On Bins page show bins & map
+    document.querySelector('nav a[data-section="bins"]').addEventListener('click', () => {
+      setTimeout(() => {
+        renderBins();
+        checkGeoFencing();
+      }, 200);
+    });
+
+    // Bin Alert Subscription (add to localStorage for demo)
+    document.getElementById('binAlertSub').addEventListener('change', function(){
+      let user = localStorage.getItem('user') || "Guest";
+      let subs = JSON.parse(localStorage.getItem('binAlertSubs')||"[]");
+      if(this.checked && !subs.includes(user)) {
+        subs.push(user);
+        localStorage.setItem('binAlertSubs', JSON.stringify(subs));
+      } else if(!this.checked && subs.includes(user)) {
+        localStorage.setItem('binAlertSubs', JSON.stringify(subs.filter(u=>u!==user)));
+      }
+    });
+
+    // Simulate bin fullness notification (every 10s, 1/3 chance)
+    setInterval(()=>{
+      let fullBin = bins.filter(b=>b.status==="Full")[Math.floor(Math.random()*2)];
+      let subs = JSON.parse(localStorage.getItem('binAlertSubs')||"[]");
+      if(subs.length && Math.random() < 0.33) {
+        alert(`ALERT: Bin at ${fullBin.addr} is almost full!`);
+      }
+    }, 10000);
+
+    // Urgent Pickup Request
+    function requestUrgent(binId, addr) {
+      alert(`Urgent pickup requested for bin at ${addr}! Our team has been notified.`);
+      // In real app, send request to server.
+    }
+
+    // Pickup Booking
+    document.getElementById('pickupForm').onsubmit = function(e) {
+      e.preventDefault();
+      // Simulate booking
+      const loc = document.getElementById('pickupLoc').value;
+      const amt = document.getElementById('pickupAmt').value;
+      const slot = document.getElementById('pickupSlot').value;
+      let user = localStorage.getItem('user') || "Guest";
+      // Notify users in location
+      let message = `Pickup booked at <b>${loc}</b> for <b>${amt}kg</b> in <b>${slot}</b> slot.<br>`;
+      message += `<i class="fa-solid fa-bell"></i> <b>All users in ${loc} will be notified!</b>`;
+      document.getElementById('pickupNotif').innerHTML = message;
+      document.getElementById('pickupNotif').style.display = '';
+      // Store for admin
+      let pickups = JSON.parse(localStorage.getItem('pickups') || "[]");
+      pickups.push({loc, amt, slot, user});
+      localStorage.setItem('pickups', JSON.stringify(pickups));
+      // Add to team if exists
+      let team = localStorage.getItem('myTeam');
+      if(team) {
+        let teams = JSON.parse(localStorage.getItem('teamScores')||"{}");
+        teams[team] = (teams[team]||0) + parseInt(amt);
+        localStorage.setItem('teamScores', JSON.stringify(teams));
+      }
+      setTimeout(()=>{document.getElementById('pickupNotif').style.display='none';}, 4000);
+      this.reset();
+    };
+
+    // Pickup & Earn
+    document.getElementById('earnForm').onsubmit = function(e) {
+      e.preventDefault();
+      const bin = document.getElementById('earnBin').value;
+      const kg = Number(document.getElementById('earnKg').value);
+      let valid = bins.find(b=>b.id===bin);
+      let user = localStorage.getItem('user') || "Guest";
+      let msg = "";
+      if (valid) {
+        msg = `<b>Success!</b> You've earned <span style="color:#43a047;font-weight:700;">₹${kg*10}</span> for disposing ${kg}kg at <b>${valid.addr}</b>!<br>Thank you for keeping our city clean!`;
+        // Store for leaderboard
+        let scores = JSON.parse(localStorage.getItem('leaderboard')||"{}");
+        scores[user] = scores[user] || {kg:0, amount:0};
+        scores[user].kg += kg;
+        scores[user].amount += kg*10;
+        localStorage.setItem('leaderboard', JSON.stringify(scores));
+        // Add to team if exists
+        let team = localStorage.getItem('myTeam');
+        if(team) {
+          let teams = JSON.parse(localStorage.getItem('teamScores')||"{}");
+          teams[team] = (teams[team]||0) + kg;
+          localStorage.setItem('teamScores', JSON.stringify(teams));
+        }
+      } else {
+        msg = `<span style="color:#e53935;"><b>Invalid Bin Code!</b></span>`;
+      }
+      document.getElementById('earnNotif').innerHTML = msg;
+      document.getElementById('earnNotif').style.display = '';
+      setTimeout(()=>{document.getElementById('earnNotif').style.display='none';}, 4000);
+      this.reset();
+    };
+
+    // Leaderboard
+    function renderLeaderboard() {
+      let scores = JSON.parse(localStorage.getItem('leaderboard')||"{}");
+      let arr = Object.entries(scores).map(([user,sc])=>({...sc, user}));
+      arr.sort((a,b)=>b.kg-a.kg);
+      let tbody = document.getElementById('leaderboardTable').querySelector('tbody');
+      tbody.innerHTML = "";
+      if(arr.length===0) {
+        tbody.innerHTML = `<tr><td colspan="4">No data yet. Be the first to earn!</td></tr>`;
+        return;
+      }
+      arr.slice(0,10).forEach((row,i)=>{
+        tbody.innerHTML += `<tr>
+          <td>${i+1}</td>
+          <td><i class="fa-solid fa-user"></i> ${row.user}</td>
+          <td>${row.kg}</td>
+          <td>₹${row.amount}</td>
+        </tr>`;
+      });
+    }
+
+    // Impact Dashboard Script
+    function animateCounter(id, to) {
+      let el = document.getElementById(id);
+      let start = 0, step = Math.max(1, Math.round(to/60));
+      let interval = setInterval(()=>{
+        start += step;
+        if(start >= to) {el.innerText = to; clearInterval(interval);}
+        else el.innerText = start;
+      }, 20);
+    }
+    function renderDashboard() {
+      // Waste: from leaderboard, Bins: from bin list, Users: from leaderboard, Events: from event list
+      let scores = JSON.parse(localStorage.getItem('leaderboard')||"{}");
+      let waste = Object.values(scores).reduce((a,s)=>a+s.kg, 0);
+      let users = Object.keys(scores).length;
+      let binsEmptied = 15 + Math.floor(waste/50); // Simulated
+      let events = (JSON.parse(localStorage.getItem('joinedEvents')||"[]")).length + 2;
+      animateCounter('wasteCounter', waste);
+      animateCounter('userCounter', users);
+      animateCounter('binCounter', binsEmptied);
+      animateCounter('eventCounter', events);
+    }
+    document.querySelector('nav a[data-section="dashboard"]').addEventListener('click', renderDashboard);
+
+    // Community Events Script
+    const eventData = [
+      {id:1, name:"Clean Up @ City Park", date:"2025-08-18", location:"City Park"},
+      {id:2, name:"River Bank Drive", date:"2025-08-22", location:"Riverbank"},
+      {id:3, name:"Market Sweep", date:"2025-08-25", location:"Central Market"}
+    ];
+    function renderEvents() {
+      const ul = document.getElementById('eventList');
+      ul.innerHTML = "";
+      let joined = JSON.parse(localStorage.getItem('joinedEvents')||"[]");
+      eventData.forEach(ev => {
+        let joinedThis = joined.includes(ev.id);
+        ul.innerHTML += `<li>
+          <b>${ev.name}</b> - ${ev.date} <i>(${ev.location})</i>
+          <button class="cta-btn" style="margin-left:1rem;font-size:0.95rem;" onclick="joinEvent(${ev.id})" ${joinedThis?'disabled':''}>
+            ${joinedThis?'Joined':'Join'}
+          </button>
+        </li>`;
+      });
+    }
+    function joinEvent(id) {
+      let joined = JSON.parse(localStorage.getItem('joinedEvents')||"[]");
+      if(!joined.includes(id)) joined.push(id);
+      localStorage.setItem('joinedEvents', JSON.stringify(joined));
+      renderEvents();
+      let notif = document.getElementById('joinEventNotif');
+      notif.innerHTML = "<b>Thank you for joining! See you at the event!</b>";
+      notif.style.display = '';
+      setTimeout(()=>{notif.style.display='none';}, 3000);
+    }
+    document.querySelector('nav a[data-section="events"]').addEventListener('click', renderEvents);
+
+    // Waste Segregation Quiz Script
+    const quizQns = [
+      {q:"Banana Peel", a:"Wet"},
+      {q:"Plastic Bottle", a:"Recyclable"},
+      {q:"Newspaper", a:"Recyclable"},
+      {q:"Food Leftovers", a:"Wet"},
+      {q:"Broken Glass", a:"Dry"},
+      {q:"Milk Packet", a:"Dry"},
+      {q:"Metal Can", a:"Recyclable"},
+      {q:"Egg Shells", a:"Wet"},
+      {q:"Used Tissue", a:"Dry"},
+      {q:"Cardboard Box", a:"Recyclable"}
+    ];
+    let quizIdx = 0, quizScore = 0;
+    function nextQuizQ() {
+      if(quizIdx >= quizQns.length) {
+        document.getElementById('quizA').innerHTML = `<span style='color:#43a047;'>Quiz Complete! Score: ${quizScore}/${quizQns.length}</span>`;
+        document.getElementById('quizBtns').style.display = 'none';
+        document.getElementById('quizScore').innerHTML = '';
+        quizBadges();
+        return;
+      }
+      document.getElementById('quizQ').innerText = "Where should you throw: "+quizQns[quizIdx].q+"?";
+      document.getElementById('quizA').innerHTML = "";
+      document.getElementById('quizBtns').style.display = '';
+      document.getElementById('quizScore').innerHTML = `Score: ${quizScore}`;
+    }
+    function submitQuiz(ans) {
+      let correct = quizQns[quizIdx].a;
+      if(ans===correct) {
+        document.getElementById('quizA').innerHTML = "<span style='color:#43a047;'>Correct!</span>";
+        quizScore++;
+      } else {
+        document.getElementById('quizA').innerHTML = `<span style='color:#e53935;'>Wrong! Ans: ${correct}</span>`;
+      }
+      quizIdx++;
+      setTimeout(nextQuizQ, 1000);
+    }
+    document.querySelector('nav a[data-section="quiz"]').addEventListener('click',()=>{
+      quizIdx=0; quizScore=0; nextQuizQ();
+    });
+
+    // TTS for quiz
+    function ttsQuizQ() {
+      let txt = document.getElementById('quizQ').innerText;
+      if ('speechSynthesis' in window) {
+        let utter = new SpeechSynthesisUtterance(txt);
+        utter.rate = 1; utter.pitch = 1.1; utter.lang = "en-IN";
+        speechSynthesis.speak(utter);
+      }
+    }
+
+    // User Profile & Badges Script
+    function renderProfile() {
+      let user = localStorage.getItem('user') || "Guest";
+      let scores = JSON.parse(localStorage.getItem('leaderboard')||"{}");
+      let pickups = JSON.parse(localStorage.getItem('pickups')||"[]").filter(p=>p.user===user).length;
+      let events = (JSON.parse(localStorage.getItem('joinedEvents')||"[]")).length;
+      let waste = scores[user]?.kg || 0;
+      // Badges
+      let badges = [];
+      if(waste>=20) badges.push("🌟 Green Warrior");
+      if(pickups>=3) badges.push("🚚 Pickup Pro");
+      if(events>=1) badges.push("🤝 Community Helper");
+      if(waste>=100) badges.push("🏆 Waste Champion");
+      let quizbadges = JSON.parse(localStorage.getItem('quizBadges')||"{}");
+      if(quizbadges[user]) badges.push(quizbadges[user]);
+      document.getElementById('profileUser').innerText = user;
+      document.getElementById('profileWaste').innerText = waste;
+      document.getElementById('profilePickups').innerText = pickups;
+      document.getElementById('profileEvents').innerText = events;
+      document.getElementById('profileBadges').innerHTML = badges.length ? badges.join(" ") : "No badges yet.";
+    }
+    document.querySelector('nav a[data-section="profile"]').addEventListener('click', renderProfile);
+
+    // Award badge for quiz
+    function quizBadges() {
+      let user = localStorage.getItem('user') || "Guest";
+      let badges = JSON.parse(localStorage.getItem('quizBadges')||"{}");
+      if(quizScore>=quizQns.length-2) {
+        badges[user]="🧠 Waste Segregation Pro";
+        localStorage.setItem('quizBadges',JSON.stringify(badges));
+      }
+    }
+
+    // Team Challenge Mode
+    function setTeam() {
+      let t = document.getElementById('myTeam').value;
+      localStorage.setItem('myTeam', t);
+      document.getElementById('myTeamSet').innerText = "You joined: "+t;
+      renderTeamLeaderboard();
+    }
+    function renderTeam() {
+      let t = localStorage.getItem('myTeam');
+      document.getElementById('myTeam').value = t || "Connaught Place";
+      document.getElementById('myTeamSet').innerText = t ? "You joined: "+t : "";
+    }
+    function renderTeamLeaderboard() {
+      let teams = JSON.parse(localStorage.getItem('teamScores')||"{}");
+      let arr = Object.keys(teams).map(k=>({team:k, kg:teams[k]}));
+      arr.sort((a,b)=>b.kg-a.kg);
+      let tbody = document.getElementById('teamLeaderboard').querySelector('tbody');
+      tbody.innerHTML = "";
+      arr.forEach((row,i)=>{
+        tbody.innerHTML += `<tr>
+          <td>${i+1}</td>
+          <td>${row.team}</td>
+          <td>${row.kg}</td>
+        </tr>`;
+      });
+      if(arr.length===0) tbody.innerHTML = "<tr><td colspan=3>No data yet. Be the first!</td></tr>";
+    }
+
+    // AI Waste Classifier (demo only)
+    document.getElementById('aiForm').onsubmit = function(e){
+      e.preventDefault();
+      let file = document.getElementById('aiFile').files[0];
+      let preview = document.getElementById('aiPreview');
+      let result = document.getElementById('aiResult');
+      result.style.display = '';
+      result.innerHTML = `<i class='fa fa-spinner fa-spin'></i> Predicting...`;
+      if(file){
+        let reader = new FileReader();
+        reader.onload = function(evt){
+          preview.innerHTML = `<img src="${evt.target.result}" width="120" style="border-radius:12px;">`;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        preview.innerHTML = '';
+      }
+      setTimeout(()=>{
+        let types = ["Wet","Dry","Recyclable"];
+        let pred = types[Math.floor(Math.random()*3)];
+        result.innerHTML = `<b>Prediction:</b> <span style='color:#00bfae;font-weight:700;'>${pred} Waste</span> <br>(AI Demo)`;
+      }, 1800);
+    };
+
+    // Offline Logging
+    document.getElementById('offlineForm').onsubmit = function(e){
+      e.preventDefault();
+      let loc = document.getElementById('offlineLoc').value;
+      let kg = document.getElementById('offlineKg').value;
+      let user = localStorage.getItem('user') || "Guest";
+      let offline = JSON.parse(localStorage.getItem('offlineLog')||"[]");
+      offline.push({loc,kg,user,ts:Date.now()});
+      localStorage.setItem('offlineLog',JSON.stringify(offline));
+      renderOfflineLog();
+      this.reset();
+    };
+    function renderOfflineLog() {
+      let offline = JSON.parse(localStorage.getItem('offlineLog')||"[]");
+      let div = document.getElementById('offlineLogList');
+      div.innerHTML = "<b>Un-synced pickups:</b><br>";
+      if(!offline.length) {div.innerHTML += "None!"; return;}
+      offline.forEach(o=>{
+        div.innerHTML += `<div>Location: <b>${o.loc}</b> — ${o.kg}kg (<i>${o.user}</i>)</div>`;
+      });
+    }
+    function syncOffline() {
+      let offline = JSON.parse(localStorage.getItem('offlineLog')||"[]");
+      let pickups = JSON.parse(localStorage.getItem('pickups')||"[]");
+      pickups = pickups.concat(offline.map(o=>({loc:o.loc, amt:o.kg, slot:"Offline", user:o.user})));
+      localStorage.setItem('pickups',JSON.stringify(pickups));
+      localStorage.removeItem('offlineLog');
+      renderOfflineLog();
+      alert('Offline logs synced!');
+    }
+
+    // Login
+    document.getElementById('loginForm').onsubmit = function(e) {
+      e.preventDefault();
+      const user = document.getElementById('username').value;
+      localStorage.setItem('user', user);
+      document.getElementById('loginNotif').innerHTML = `<b>Hello, ${user}!</b> You are now logged in.`;
+      document.getElementById('loginNotif').style.display = '';
+      setTimeout(()=>{
+        document.getElementById('loginNotif').style.display='none';
+        switchSection('home');
+      }, 2000);
+      this.reset();
+    };
+
+    // Admin panel
+    document.getElementById('adminForm').onsubmit = function(e) {
+      e.preventDefault();
+      const u = document.getElementById('adminUser').value;
+      const p = document.getElementById('adminPass').value;
+      if (u==="admin" && p==="admin123") {
+        document.getElementById('adminNotif').innerHTML = `<b>Welcome, Admin!</b>`;
+        document.getElementById('adminNotif').style.display = '';
+        document.getElementById('adminPanel').style.display = '';
+        // Show pickups
+        let pickups = JSON.parse(localStorage.getItem('pickups') || "[]");
+        let puList = document.getElementById('adminPickups');
+        puList.innerHTML = pickups.length ? "" : "<li>No pickups yet.</li>";
+        pickups.forEach(p=>{
+          puList.innerHTML += `<li><b>${p.loc}</b> - ${p.amt}kg at ${p.slot} (<i>${p.user}</i>)</li>`;
+        });
+        // Show bins
+        let binList = document.getElementById('adminBins');
+        binList.innerHTML = "";
+        bins.forEach(b=>{
+          binList.innerHTML += `<li>${b.addr} [${b.id}]: <b>${b.level}%</b> - <b>${b.status}</b></li>`;
+        });
+        // Show bin alert subscribers
+        let subs = JSON.parse(localStorage.getItem('binAlertSubs')||"[]");
+        let subList = document.getElementById('binAlertList');
+        subList.innerHTML = subs.length ? "" : "<li>No subscribers yet.</li>";
+        subs.forEach(u=>{
+          subList.innerHTML += `<li><i class="fa-solid fa-user"></i> ${u}</li>`;
+        });
+      } else {
+        document.getElementById('adminNotif').innerHTML = `<span style="color:#e53935;"><b>Invalid admin credentials!</b></span>`;
+        document.getElementById('adminNotif').style.display = '';
+        document.getElementById('adminPanel').style.display = 'none';
+      }
+      setTimeout(()=>{document.getElementById('adminNotif').style.display='none';}, 4000);
+      this.reset();
+    };
+
+    // Auto-login nav label switch
+    function updateLoginNav() {
+      let user = localStorage.getItem('user');
+      document.getElementById('loginBtn').innerHTML = user
+        ? `<i class="fa-solid fa-user"></i> ${user}` : `<i class="fa-solid fa-user"></i> Login`;
+    }
+    updateLoginNav();
+    setInterval(updateLoginNav, 1000);
+
+    // Geofencing repeat check (simulate user moving)
+    setInterval(()=>{
+      if(document.getElementById('bins').classList.contains('active')) checkGeoFencing();
+    }, 4000);
+
+    // Accessibility: Large Text
+    document.getElementById('a11yBtn').addEventListener('click',function(){
+      document.body.classList.toggle('a11y');
+      if(document.body.classList.contains('a11y')){
+        document.body.style.fontSize="1.25em";
+        this.classList.add('active');
+      } else {
+        document.body.style.fontSize="";
+        this.classList.remove('active');
+      }
+    });
+
+    // High Contrast Mode
+    document.getElementById('contrastBtn').addEventListener('click',function(){
+      document.body.classList.toggle('highcontrast');
+      this.classList.toggle('active');
+    });
+
+    // Night Mode
+    document.getElementById('nightBtn').addEventListener('click',function(){
+      document.body.classList.toggle('night');
+      this.classList.toggle('active');
+    });
+
+    // Voice Assistant (Simulated)
+    document.getElementById('voiceBtn').addEventListener('click', function(){
+      document.getElementById('voiceModal').style.display = '';
+      document.getElementById('voiceInput').value = '';
+      document.getElementById('voiceResult').innerHTML = '';
+    });
+    function closeVoiceModal(){ document.getElementById('voiceModal').style.display='none'; }
+    function runVoice(){
+      let q = document.getElementById('voiceInput').value.trim().toLowerCase();
+      let result = "";
+      if(q.includes('nearest bin')) result = "Showing the nearest bins on map!";
+      else if(q.includes('profile')) result = "Switching to your profile.";
+      else if(q.includes('pickup')) result = "Opening pickup booking page.";
+      else if(q.includes('news')) result = "Showing latest eco news!";
+      else if(q.includes('challenge')) result = "Switching to Team Challenge leaderboard.";
+      else result = "Sorry, I did not get that. Try: 'Show my profile', 'Find nearest bin', 'Open news'.";
+      document.getElementById('voiceResult').innerHTML = result;
+      setTimeout(()=>{ if(result.includes('bin')) switchSection('bins');
+        if(result.includes('profile')) switchSection('profile');
+        if(result.includes('pickup')) switchSection('pickup');
+        if(result.includes('news')) switchSection('news');
+        if(result.includes('challenge')) switchSection('challenges');
+      }, 1200);
+    }
+
+  </script>
+</body>
+</html>
